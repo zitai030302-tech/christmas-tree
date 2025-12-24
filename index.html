@@ -25,7 +25,7 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* 小红点光标：帮你确认手势位置 */
+        /* 小红点光标 */
         #hand-cursor {
             position: absolute; width: 20px; height: 20px;
             background: rgba(255, 0, 0, 0.5); border: 2px solid #fff; border-radius: 50%;
@@ -90,20 +90,15 @@
 
         let scene, camera, renderer, composer, mainGroup, clock = new THREE.Clock();
         let particleSystem = [], photoMeshGroup = new THREE.Group();
-        let logoMesh, handLandmarker, video;
+        // 关键修复：把 caneTexture 加回去了！
+        let logoMesh, handLandmarker, video, caneTexture;
 
         async function init() {
             initThree(); setupEnvironment(); setupLights(); createTextures();
             createParticles(); createDust(); 
-            
-            // 加载照片
             loadLocalPhotos();
-            // 创建不旋转的 Logo
             create3DLogo();
-            
             setupPostProcessing(); 
-            
-            // 初始化手势
             await initMediaPipe(); 
             
             const loader = document.getElementById('loader');
@@ -114,14 +109,11 @@
         function loadLocalPhotos() {
             const loader = new THREE.TextureLoader();
             console.log("Loading photos from root directory...");
-            
-            // --- 核心修改：路径去掉了 ./images/，直接用 ./ ---
             for (let i = 1; i <= CONFIG.photoCount; i++) {
                 loader.load(`./${i}.jpg`, 
                     (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); },
                     undefined,
                     () => { 
-                        // 失败了试一下 png
                         loader.load(`./${i}.png`, (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); });
                     }
                 );
@@ -143,8 +135,6 @@
                 });
                 logoMesh = new THREE.Mesh(textGeo, textMaterial);
                 logoMesh.position.set(0, 16, 0); 
-                
-                // 核心修改：添加到 scene 而不是 mainGroup，这样它就不会跟着树转了
                 scene.add(logoMesh); 
             });
         }
