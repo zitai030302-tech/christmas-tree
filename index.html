@@ -281,14 +281,17 @@
 
                 let t = Math.random() * Math.PI * 2;
                 let scale = 0.8; 
-                if (this.type === 'PHOTO') {
-                    const r = (Math.random() * 8) * scale;
-                    this.posHeart.set(
-                        r * Math.sin(t) * Math.sin(t) * Math.sin(t),
-                        r * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) / 16,
-                        (Math.random() - 0.5) * 5
-                    );
-                } else {
+// [修改后内容]
+if (this.type === 'PHOTO') {
+    // 【修改点 1】设置最小半径 (比如 4)，让照片往外围扩散
+    const r = (4 + Math.random() * 6) * scale; 
+    this.posHeart.set(
+        r * Math.sin(t) * Math.sin(t) * Math.sin(t),
+        r * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) / 16,
+        // 【修改点 2】稍微增加 Z 轴深度范围 (从 5 改到 10)，让前后错落感更强
+        (Math.random() - 0.5) * 10 
+    );
+} else {
                     let spread = 1.0 + (Math.random() - 0.5) * 0.2; 
                     let x = 16 * Math.pow(Math.sin(t), 3);
                     let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
@@ -297,10 +300,24 @@
                 }
             }
 
-            update(dt, mode, focusTargetMesh) {
-                let target = this.posTree;
-                if (mode === 'HEART') target = this.posHeart;
-                else if (mode === 'FOCUS') {
+// [修改后内容]
+update(dt, mode, focusTargetMesh) {
+    let target = this.posTree;
+    if (mode === 'HEART') {
+        target = this.posHeart;
+        // 【修改点 3】新增：如果是照片，在爱心模式下增加缓慢漂浮动画
+        if (this.type === 'PHOTO') {
+            const time = clock.elapsedTime;
+            // 利用 mesh.id 让每个照片的漂浮轨迹都不一样
+            const driftX = Math.sin(time * 0.3 + this.mesh.id) * 1.5; 
+            const driftY = Math.cos(time * 0.2 + this.mesh.id * 0.5) * 1.0;
+            const driftZ = Math.sin(time * 0.4 + this.mesh.id * 0.2) * 0.5;
+            // 基于目标位置加上漂浮偏移量
+            target = this.posHeart.clone().add(new THREE.Vector3(driftX, driftY, driftZ));
+        }
+    }
+    else if (mode === 'FOCUS') {
+// ... (后面的代码保持不变)
                     if (this.mesh === focusTargetMesh) {
                         const desiredWorldPos = new THREE.Vector3(0, 2, 35);
                         const invMatrix = new THREE.Matrix4().copy(mainGroup.matrixWorld).invert();
