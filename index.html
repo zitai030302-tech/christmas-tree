@@ -137,15 +137,15 @@
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
     </style>
 
-<script type="importmap">
-    {
-        "imports": {
-            "three": "https://npm.elemecdn.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://npm.elemecdn.com/three@0.160.0/examples/jsm/",
-            "@mediapipe/tasks-vision": "https://npm.elemecdn.com/@mediapipe/tasks-vision@0.10.3/vision_bundle.js"
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.zhimg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.zhimg.com/three@0.160.0/examples/jsm/",
+                "@mediapipe/tasks-vision": "./mp.js"
+            }
         }
-    }
-</script>
+    </script>
 </head>
 <body>
 
@@ -161,14 +161,11 @@
         
         <div class="controls-wrapper">
             <div class="btn-group">
-                <!-- Select Folder Button -->
                 <label class="upload-btn">
                     Select Folder
-                    <!-- webkitdirectory allows folder selection -->
                     <input type="file" id="folder-input" webkitdirectory directory multiple>
                 </label>
                 
-                <!-- Select Individual Files Button -->
                 <label class="upload-btn">
                     Select Files
                     <input type="file" id="file-input" multiple accept="image/*">
@@ -216,13 +213,8 @@
             
             // --- 自动读取配置 ---
             preload: {
-                // 启用自动扫描本地 "./images/" 文件夹
-                // 注意：这需要图片按顺序命名 (1.jpg, 2.jpg ...) 
-                // 或者您手动在 'images' 数组中列出具体文件名
                 autoScanLocal: false,
-                scanCount: 200, // 尝试扫描 1.jpg 到 30.jpg
-                
-                // 固定在线演示图片 (始终加载)
+                scanCount: 200, 
                 images: [
                     'https://images.unsplash.com/photo-1543589077-47d81606c1bf?q=80&w=600', 
                     'https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?q=80&w=600',
@@ -256,7 +248,6 @@
             createParticles(); 
             createDust();     
             
-            // 执行自动图片加载逻辑
             loadPredefinedImages();
 
             setupPostProcessing();
@@ -273,8 +264,6 @@
         // --- 增强版图片加载系统 ---
         function loadPredefinedImages() {
             const loader = new THREE.TextureLoader();
-            
-            // 1. 加载配置的固定列表 (在线或特定路径)
             CONFIG.preload.images.forEach(url => {
                 loader.load(url, 
                     (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); },
@@ -283,25 +272,18 @@
                 );
             });
 
-            // 2. 自动扫描本地 ./images/ 文件夹 (1.jpg ... 30.jpg)
             if (CONFIG.preload.autoScanLocal) {
-                console.log("Attempting to auto-load local images from ./images/ folder...");
-                
-                // 尝试加载 jpg
                 for (let i = 1; i <= CONFIG.preload.scanCount; i++) {
                     const pathJpg = `./images/(${i}).jpg`;
                     const pathPng = `./images/(${i}).png`;
-                    
-                    // 尝试加载 JPG
                     loader.load(pathJpg, 
                         (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); },
                         undefined,
-                        // 如果 JPG 失败，尝试加载 PNG (简单的错误回调链)
                         () => {
                              loader.load(pathPng, 
                                 (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); },
                                 undefined,
-                                () => {} // 忽略错误
+                                () => {} 
                              );
                         }
                     );
@@ -635,7 +617,6 @@
             const frameMat = new THREE.MeshStandardMaterial({ color: CONFIG.colors.champagneGold, metalness: 1.0, roughness: 0.1 });
             const frame = new THREE.Mesh(frameGeo, frameMat);
 
-            // 保持宽高比
             let width = 1.2;
             let height = 1.2;
             
@@ -657,7 +638,6 @@
             group.add(frame);
             group.add(photo);
             
-            // 调整框的大小以适应图片
             frame.scale.set(width/1.2, height/1.2, 1);
 
             const s = 0.8;
@@ -674,7 +654,6 @@
             if(!files.length) return;
             
             Array.from(files).forEach(f => {
-                // 过滤非图片文件 (针对文件夹上传时的系统文件等)
                 if (!f.type.startsWith('image/')) return;
 
                 const reader = new FileReader();
@@ -697,9 +676,12 @@
             webcamCanvas.width = 280; 
             webcamCanvas.height = 210;
 
-const vision = await FilesetResolver.forVisionTasks(
-    "https://npm.elemecdn.com/@mediapipe/tasks-vision@0.10.3/wasm"
-);
+            // 关键修复：这里的 WASM 路径也改成了知乎 CDN
+            const vision = await FilesetResolver.forVisionTasks(
+                "https://unpkg.zhimg.com/@mediapipe/tasks-vision@0.10.3/wasm"
+            );
+            
+            // 下面这行读取本地的 .task 文件 (确保你之前下载的 hand_landmarker.task 还在)
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
                 baseOptions: {
                     modelAssetPath: `./hand_landmarker.task`,
@@ -720,6 +702,103 @@ const vision = await FilesetResolver.forVisionTasks(
                 }
             }
         }
+
+        let lastVideoTime = -1;
+        async function predictWebcam() {
+            if (video.currentTime !== lastVideoTime) {
+                lastVideoTime = video.currentTime;
+                if (handLandmarker) {
+                    const result = handLandmarker.detectForVideo(video, performance.now());
+                    processGestures(result);
+                }
+            }
+            requestAnimationFrame(predictWebcam);
+        }
+
+        function processGestures(result) {
+            if (result.landmarks && result.landmarks.length > 0) {
+                STATE.hand.detected = true;
+                const lm = result.landmarks[0];
+                STATE.hand.x = (lm[9].x - 0.5) * 2; 
+                STATE.hand.y = (lm[9].y - 0.5) * 2;
+
+                const thumb = lm[4]; const index = lm[8]; const wrist = lm[0];
+                const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
+                const tips = [lm[8], lm[12], lm[16], lm[20]];
+                let avgDist = 0;
+                tips.forEach(t => avgDist += Math.hypot(t.x - wrist.x, t.y - wrist.y));
+                avgDist /= 4;
+
+                if (pinchDist < 0.05) {
+                    if (STATE.mode !== 'FOCUS') {
+                        STATE.mode = 'FOCUS';
+                        const photos = particleSystem.filter(p => p.type === 'PHOTO');
+                        if (photos.length) STATE.focusTarget = photos[Math.floor(Math.random()*photos.length)].mesh;
+                    }
+                } else if (avgDist < 0.25) {
+                    STATE.mode = 'TREE';
+                    STATE.focusTarget = null;
+                } else if (avgDist > 0.4) {
+                    STATE.mode = 'SCATTER';
+                    STATE.focusTarget = null;
+                }
+            } else {
+                STATE.hand.detected = false;
+            }
+        }
+
+        function setupEvents() {
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                composer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            document.getElementById('file-input').addEventListener('change', handleImageUpload);
+            document.getElementById('folder-input').addEventListener('change', handleImageUpload);
+            
+            window.addEventListener('keydown', (e) => {
+                if (e.key.toLowerCase() === 'h') {
+                    const controls = document.querySelector('.controls-wrapper');
+                    if (controls) controls.classList.toggle('ui-hidden');
+                    
+                    const webcam = document.getElementById('webcam-wrapper');
+                    if(webcam) webcam.classList.toggle('ui-hidden');
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            // Rotation Logic
+            if (STATE.mode === 'SCATTER' && STATE.hand.detected) {
+                const targetRotY = STATE.hand.x * Math.PI * 0.9; 
+                const targetRotX = STATE.hand.y * Math.PI * 0.25;
+                STATE.rotation.y += (targetRotY - STATE.rotation.y) * 3.0 * dt;
+                STATE.rotation.x += (targetRotX - STATE.rotation.x) * 3.0 * dt;
+            } else {
+                if(STATE.mode === 'TREE') {
+                    STATE.rotation.y += 0.3 * dt;
+                    STATE.rotation.x += (0 - STATE.rotation.x) * 2.0 * dt;
+                } else {
+                      STATE.rotation.y += 0.1 * dt; 
+                }
+            }
+
+            mainGroup.rotation.y = STATE.rotation.y;
+            mainGroup.rotation.x = STATE.rotation.x;
+
+            particleSystem.forEach(p => p.update(dt, STATE.mode, STATE.focusTarget));
+            composer.render();
+        }
+
+        init();
+    </script>
+</body>
+</html>
 
         let lastVideoTime = -1;
         async function predictWebcam() {
