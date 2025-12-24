@@ -101,7 +101,10 @@
         };
 
         let scene, camera, renderer, composer, mainGroup, clock = new THREE.Clock();
-        let particleSystem = [], snowSystem = [];
+        
+        // 【关键修复】把 photoMeshGroup 加回来了！
+        let particleSystem = [], snowSystem = [], photoMeshGroup = new THREE.Group();
+        
         let logoMesh, handLandmarker, video;
         let caneTexture; 
 
@@ -132,7 +135,7 @@
                 
                 updateStatus("Connecting AI Brain...");
                 
-                // 关键修改：给 MediaPipe 加载设置超时，5秒没好就跳过
+                // 给 MediaPipe 加载设置超时，5秒没好就跳过，保证不卡死
                 const mpPromise = initMediaPipe();
                 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject("TIMEOUT"), 5000));
                 
@@ -360,6 +363,7 @@
                     mesh = new THREE.Mesh(candyGeo, candyMat); type = 'CANE';
                 }
                 const s = 0.4 + Math.random() * 0.5; mesh.scale.set(s,s,s); mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+                // 关键点：这里之前报错是因为 photoMeshGroup 没定义，现在修复了
                 mainGroup.add(mesh); particleSystem.push(new Particle(mesh, type, false));
             }
             
@@ -372,7 +376,11 @@
             starShape.closePath();
             const starGeo = new THREE.ExtrudeGeometry(starShape, { depth: 0.4, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1, bevelSegments: 2 }); starGeo.center(); 
             const starMat = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0xffaa00, emissiveIntensity: 1.0, metalness: 1.0, roughness: 0 });
-            const star = new THREE.Mesh(starGeo, starMat); star.position.set(0, CONFIG.particles.treeHeight/2 + 1.2, 0); mainGroup.add(star); mainGroup.add(photoMeshGroup);
+            const star = new THREE.Mesh(starGeo, starMat); star.position.set(0, CONFIG.particles.treeHeight/2 + 1.2, 0); 
+            
+            // 修复：添加 star 和 photoMeshGroup
+            mainGroup.add(star); 
+            mainGroup.add(photoMeshGroup);
         }
 
         function addPhotoToScene(texture) {
@@ -383,7 +391,11 @@
             const photoGeo = new THREE.PlaneGeometry(width, height); const photoMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
             const photo = new THREE.Mesh(photoGeo, photoMat); photo.position.z = 0.04;
             const group = new THREE.Group(); group.add(frame); group.add(photo);
-            frame.scale.set(width/1.2, height/1.2, 1); const s = 0.8; group.scale.set(s,s,s); photoMeshGroup.add(group); particleSystem.push(new Particle(group, 'PHOTO', false));
+            frame.scale.set(width/1.2, height/1.2, 1); const s = 0.8; group.scale.set(s,s,s); 
+            
+            // 这里不会再报错了
+            photoMeshGroup.add(group); 
+            particleSystem.push(new Particle(group, 'PHOTO', false));
             updatePhotoLayout();
         }
 
