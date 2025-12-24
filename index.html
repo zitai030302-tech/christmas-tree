@@ -3,28 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Christmas Tree - Final</title>
+    <title>LZT & VV - Exclusive Christmas</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000000; font-family: 'Times New Roman', serif; }
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; pointer-events: none;
-            display: flex; flex-direction: column; 
-            align-items: center;
-            padding-top: 40px;
-            box-sizing: border-box;
-            transition: opacity 0.5s ease;
-        }
-        
-        .ui-hidden { opacity: 0 !important; pointer-events: none !important; }
-
+        /* 隐藏了之前的 UI 层，只保留加载动画 */
         #loader {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 100;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.8s ease-out;
+            transition: opacity 1.5s ease-out; /* 让它消失得更慢一点，更优雅 */
         }
         .loader-text {
             color: #d4af37; font-size: 14px; letter-spacing: 4px; margin-top: 20px;
@@ -37,41 +26,7 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        h1 { 
-            color: #fceea7; font-size: 56px; margin: 0; font-weight: 400; 
-            letter-spacing: 6px; 
-            text-shadow: 0 0 50px rgba(252, 238, 167, 0.6); 
-            background: linear-gradient(to bottom, #fff, #eebb66);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-family: 'Cinzel', 'Times New Roman', serif;
-            opacity: 0.9;
-            transition: opacity 0.5s ease;
-        }
-
-        .controls-wrapper {
-            position: absolute; top: 30px; right: 30px; pointer-events: auto;
-            display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
-            z-index: 20; transition: opacity 0.5s ease;
-        }
-
-        .btn-group { display: flex; gap: 10px; }
-
-        .upload-btn {
-            background: rgba(20, 20, 20, 0.6); border: 1px solid rgba(212, 175, 55, 0.4); 
-            color: #d4af37; padding: 10px 20px; cursor: pointer; 
-            text-transform: uppercase; letter-spacing: 2px; font-size: 10px;
-            transition: all 0.4s; display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px); min-width: 120px;
-        }
-        .upload-btn:hover { background: #d4af37; color: #000; box-shadow: 0 0 20px rgba(212, 175, 55, 0.5); }
-        
-        .hint-text {
-            color: rgba(212, 175, 55, 0.5); font-size: 9px; letter-spacing: 1px;
-            text-transform: uppercase; text-align: right; margin-top: 5px;
-        }
-
-        input[type="file"] { display: none; }
-
+        /* 摄像头小窗 */
         #webcam-wrapper {
             position: absolute; bottom: 30px; left: 30px; width: 280px; height: 210px;
             border: 1px solid rgba(212, 175, 55, 0.5); box-shadow: 0 0 20px rgba(0,0,0,0.9);
@@ -81,10 +36,6 @@
         #webcam { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
     </style>
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
-    </style>
-
     <script type="importmap">
         {
             "imports": {
@@ -99,22 +50,10 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <div class="loader-text">Loading Memories</div>
+        <div class="loader-text">Waiting for LZT & VV...</div>
     </div>
 
     <div id="canvas-container"></div>
-
-    <div id="ui-layer">
-        <h1>Merry Christmas</h1>
-        <div class="controls-wrapper">
-            <div class="btn-group">
-                <label class="upload-btn">Select Folder<input type="file" id="folder-input" webkitdirectory directory multiple></label>
-                <label class="upload-btn">Select Files<input type="file" id="file-input" multiple accept="image/*"></label>
-            </div>
-            <div class="hint-text">Use "Select Folder" to load all photos at once</div>
-            <div class="hint-text" style="opacity: 0.7; font-size: 8px;">Or put photos in "./images/" (1.jpg - 30.jpg)</div>
-        </div>
-    </div>
 	
     <div id="webcam-wrapper">
         <video id="webcam" autoplay playsinline></video>
@@ -129,16 +68,16 @@
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'; 
         import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+        // 引入字体加载器和文本几何体
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
         const CONFIG = {
             colors: { bg: 0x000000, champagneGold: 0xffd966, deepGreen: 0x03180a, accentRed: 0x990000 },
             particles: { count: 1500, dustCount: 2500, treeHeight: 24, treeRadius: 8 },
             camera: { z: 50 },
-            preload: {
-                autoScanLocal: false, scanCount: 200, 
-                // 关键修改：清空了被墙的 Unsplash 图片列表，解决红字报错
-                images: []
-            }
+            // 这里设置要读取的照片数量
+            photoCount: 10 
         };
 
         const STATE = {
@@ -148,35 +87,88 @@
 
         let scene, camera, renderer, composer, mainGroup, clock = new THREE.Clock();
         let particleSystem = [], photoMeshGroup = new THREE.Group();
+        let logoMesh; // 存储Logo网格
         let handLandmarker, video, webcamCanvas, webcamCtx, caneTexture; 
 
         async function init() {
             initThree(); setupEnvironment(); setupLights(); createTextures();
-            createParticles(); createDust(); loadPredefinedImages();
+            createParticles(); createDust(); 
+            
+            // 1. 加载本地照片
+            loadLocalPhotos();
+            
+            // 2. 创建 LZT & VV 3D Logo
+            create3DLogo();
+
             setupPostProcessing(); setupEvents(); 
             
-            // MediaPipe 初始化后，loader 才会消失
             await initMediaPipe(); 
             
             const loader = document.getElementById('loader');
-            loader.style.opacity = 0; setTimeout(() => loader.remove(), 800);
+            loader.style.opacity = 0; setTimeout(() => loader.remove(), 1500);
             animate();
         }
 
-        function loadPredefinedImages() {
+        // --- 核心修改：只读取 ./images/1.jpg ... 10.jpg ---
+        function loadLocalPhotos() {
             const loader = new THREE.TextureLoader();
-            CONFIG.preload.images.forEach(url => {
-                loader.load(url, (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); });
-            });
-            if (CONFIG.preload.autoScanLocal) {
-                for (let i = 1; i <= CONFIG.preload.scanCount; i++) {
-                    const pathJpg = `./images/(${i}).jpg`;
-                    const pathPng = `./images/(${i}).png`;
-                    loader.load(pathJpg, (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); }, undefined, 
-                        () => { loader.load(pathPng, (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); }, undefined, () => {} ); }
-                    );
-                }
+            console.log("正在为您加载专属回忆...");
+            
+            for (let i = 1; i <= CONFIG.photoCount; i++) {
+                // 假设图片都在 images 文件夹下，命名为 1.jpg, 2.jpg...
+                const path = `./images/${i}.jpg`;
+                
+                loader.load(path, 
+                    (t) => { 
+                        t.colorSpace = THREE.SRGBColorSpace; 
+                        addPhotoToScene(t); 
+                    },
+                    undefined,
+                    (err) => { 
+                        // 如果找不到某张图， silently ignore (不报错)
+                        // console.log(`Image ${i}.jpg not found, skipping.`);
+                    }
+                );
             }
+        }
+
+        // --- 核心修改：创建 3D 文字 Logo ---
+        function create3DLogo() {
+            const loader = new FontLoader();
+            // 加载一个标准英文字体
+            loader.load('https://jsd.cdn.zzko.cn/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', function (font) {
+                
+                const textGeo = new TextGeometry('LZT & VV', {
+                    font: font,
+                    size: 2.5,     // 字号大小
+                    height: 0.5,   // 厚度
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.03,
+                    bevelSize: 0.02,
+                    bevelOffset: 0,
+                    bevelSegments: 5
+                });
+
+                textGeo.computeBoundingBox();
+                const centerOffset = - 0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
+                textGeo.translate( centerOffset, 0, 0 );
+
+                const textMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xffd700, // 金色
+                    metalness: 1.0, 
+                    roughness: 0.1,
+                    emissive: 0x443300,
+                    emissiveIntensity: 0.4
+                });
+
+                logoMesh = new THREE.Mesh(textGeo, textMaterial);
+                
+                // 把 Logo 放在树顶上方
+                logoMesh.position.set(0, 16, 0); 
+                
+                mainGroup.add(logoMesh);
+            });
         }
 
         function initThree() {
@@ -331,22 +323,11 @@
             frame.scale.set(width/1.2, height/1.2, 1); const s = 0.8; group.scale.set(s,s,s); photoMeshGroup.add(group); particleSystem.push(new Particle(group, 'PHOTO', false));
             updatePhotoLayout();
         }
-        
-        function handleImageUpload(e) {
-            const files = e.target.files; if(!files.length) return;
-            Array.from(files).forEach(f => {
-                if (!f.type.startsWith('image/')) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => { new THREE.TextureLoader().load(ev.target.result, (t) => { t.colorSpace = THREE.SRGBColorSpace; addPhotoToScene(t); }); }
-                reader.readAsDataURL(f);
-            });
-        }
 
         async function initMediaPipe() {
             video = document.getElementById('webcam'); webcamCanvas = document.getElementById('webcam-preview'); webcamCtx = webcamCanvas.getContext('2d');
             webcamCanvas.width = 280; webcamCanvas.height = 210;
             
-            // 使用 jsd.cdn.zzko.cn 镜像加载 WASM
             const vision = await FilesetResolver.forVisionTasks(
                 "https://jsd.cdn.zzko.cn/npm/@mediapipe/tasks-vision@0.10.3/wasm"
             );
@@ -382,12 +363,17 @@
 
         function setupEvents() {
             window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); });
-            document.getElementById('file-input').addEventListener('change', handleImageUpload); document.getElementById('folder-input').addEventListener('change', handleImageUpload);
-            window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'h') { document.querySelector('.controls-wrapper').classList.toggle('ui-hidden'); const webcam = document.getElementById('webcam-wrapper'); if(webcam) webcam.classList.toggle('ui-hidden'); } });
+            window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'h') { const webcam = document.getElementById('webcam-wrapper'); if(webcam) webcam.classList.toggle('ui-hidden'); } });
         }
 
         function animate() {
             requestAnimationFrame(animate); const dt = clock.getDelta();
+            
+            // Logo 旋转动画 (如果Logo已经加载)
+            if (logoMesh) {
+                logoMesh.rotation.y += 0.3 * dt; // 让 Logo 慢慢自转，很高级
+            }
+
             if (STATE.mode === 'SCATTER' && STATE.hand.detected) {
                 const targetRotY = STATE.hand.x * Math.PI * 0.9; const targetRotX = STATE.hand.y * Math.PI * 0.25;
                 STATE.rotation.y += (targetRotY - STATE.rotation.y) * 3.0 * dt; STATE.rotation.x += (targetRotX - STATE.rotation.x) * 3.0 * dt;
