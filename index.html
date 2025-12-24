@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grand Luxury Tree - Baidu CDN</title>
+    <title>Christmas Tree - Ultimate Version</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000000; font-family: 'Times New Roman', serif; }
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
@@ -88,8 +88,8 @@
     <script type="importmap">
         {
             "imports": {
-                "three": "https://code.bdstatic.com/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://code.bdstatic.com/npm/three@0.160.0/examples/jsm/",
+                "three": "https://jsd.cdn.zzko.cn/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://jsd.cdn.zzko.cn/npm/three@0.160.0/examples/jsm/",
                 "@mediapipe/tasks-vision": "./mp.js"
             }
         }
@@ -158,7 +158,7 @@
             initThree(); setupEnvironment(); setupLights(); createTextures();
             createParticles(); createDust(); loadPredefinedImages();
             setupPostProcessing(); setupEvents(); 
-            await initMediaPipe(); // 等待 MediaPipe 加载
+            await initMediaPipe(); 
             
             const loader = document.getElementById('loader');
             loader.style.opacity = 0; setTimeout(() => loader.remove(), 800);
@@ -348,9 +348,9 @@
             video = document.getElementById('webcam'); webcamCanvas = document.getElementById('webcam-preview'); webcamCtx = webcamCanvas.getContext('2d');
             webcamCanvas.width = 280; webcamCanvas.height = 210;
             
-            // 关键修改：WASM 也换成百度 CDN
+            // 关键修改：WASM 也换成 zstatic/jsd 镜像，确保不跨域报错
             const vision = await FilesetResolver.forVisionTasks(
-                "https://code.bdstatic.com/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                "https://jsd.cdn.zzko.cn/npm/@mediapipe/tasks-vision@0.10.3/wasm"
             );
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
                 baseOptions: { modelAssetPath: `./hand_landmarker.task`, delegate: "GPU" },
